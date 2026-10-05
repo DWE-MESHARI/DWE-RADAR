@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>رادار الجودة — لوحة تحليل ملاحظات المشاريع</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FFFBF5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/><path d="M9 9h.01M15 9h.01M9 13h.01M15 13h.01"/></svg>
+      </div>
+      <div>
+        <h1>رادار الجودة</h1>
+        <p class="mono" id="fileMetaLine">تحليل ملاحظات الجودة في المشاريع</p>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav no-print">
+      <button class="side-link active" data-tab="current" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-4"/></svg>
+        التحليل الحالي
+      </button>
+      <button class="side-link" data-tab="overview" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        المتابعة الشاملة
+      </button>
+      <button class="side-link" data-tab="notes" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+        قسم الملاحظات
+        <span class="mono" id="notesCountBadge"></span>
+      </button>
+    </nav>
+
+    <div class="sidebar-divider no-print"></div>
+
+    <div class="sidebar-actions no-print">
+      <button class="btn btn-solid" id="uploadBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        تحليل ملف جديد
+      </button>
+      <button class="btn btn-outline-dark" id="shareBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
+        مشاركة
+      </button>
+      <button class="btn btn-outline-dark" id="printBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        طباعة التقرير
+      </button>
+    </div>
+
+    <div class="sidebar-meta">
+      <div><span>المصدر</span><b id="metaSource">—</b></div>
+      <div><span>عدد الشرائح/الصفوف</span><b id="metaSlides">—</b></div>
+      <div><span>أعدّه</span><b id="metaAuthor">منيره الخليوي – مسؤول مراقبة الجودة</b></div>
+      <div><span>تاريخ التقرير</span><b id="metaDate">—</b></div>
+    </div>
+  </aside>
+
+  <main class="content-area">
+   <div class="content-inner">
+
+  <!-- ============ PANEL: CURRENT ANALYSIS ============ -->
+  <div class="panel active" id="panel-current">
+
+    <div class="print-meta">
+      <span>المصدر: <b id="metaSourcePrint">—</b></span>
+      <span>عدد الشرائح/الصفوف: <b id="metaSlidesPrint">—</b></span>
+      <span>أعدّه: <b>منيره الخليوي – مسؤول مراقبة الجودة</b></span>
+      <span>تاريخ التقرير: <b id="metaDatePrint">—</b></span>
+    </div>
+
+    <section class="no-print">
+      <div class="section-head">
+        <h2>تحليل ملف جديد</h2>
+        <span class="hint">يدعم ملفات PowerPoint (.pptx) وملفات Excel (.xlsx, .xls, .csv) — تتم المعالجة داخل المتصفح</span>
+      </div>
+      <div class="dropzone" id="dropzone">
+        <div class="dz-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="dz-text">
+          <b>اسحب وأفلت ملف PowerPoint أو Excel هنا</b>
+          <p>أو اضغط لاختيار ملف — سيتم تحليله وحفظه تلقائيًا في قسم الملاحظات المحفوظة</p>
+        </div>
+        <button class="btn btn-ghost" id="pickBtn" type="button">اختيار ملف</button>
+        <button class="btn btn-ghost" id="resetBtn" type="button" style="display:none">الرجوع للتحليل الأصلي</button>
+        <input type="file" id="fileInput" accept=".pptx,.xlsx,.xls,.csv">
+      </div>
+      <div class="status-line" id="statusLine"><span class="spinner"></span><span id="statusText">جاري التحليل…</span></div>
+      <div class="save-note" id="saveNote"></div>
+    </section>
+
+    <section>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">إجمالي الملاحظات</div>
+          <div class="kpi-value" id="kpiTotal">0</div>
+          <div class="kpi-sub" id="kpiTotalSub">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">عدد الملاحظات</div>
+          <div class="kpi-value c-blue" id="kpiProjects">0</div>
+          <div class="kpi-sub" id="kpiProjectsSub">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">ملاحظات عالية الخطورة</div>
+          <div class="kpi-value c-red" id="kpiHigh">0</div>
+          <div class="kpi-sub" id="kpiHighSub">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">الفئة الأكثر تكرارًا</div>
+          <div class="kpi-value" id="kpiTopCat" style="font-size:22px">—</div>
+          <div class="kpi-sub" id="kpiTopCatSub">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">نسبة الإنجاز</div>
+          <div class="kpi-value c-green" id="kpiDone">0%</div>
+          <div class="kpi-sub" id="kpiDoneSub">—</div>
+        </div>
+      </div>
+      <div class="card" id="statusSummaryCard" style="margin-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <h3 style="margin:0">حالة معالجة الملاحظات</h3>
+          <span class="hint mono" id="statusSummaryPct">—</span>
+        </div>
+        <div class="status-track" id="statusTrack"></div>
+        <div class="status-legend" id="statusLegend"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>التوزيع البياني</h2>
+        <span class="hint">عدد الملاحظات حسب المشروع والفئة</span>
+      </div>
+      <div class="chart-grid">
+        <div class="card">
+          <h3>عدد الملاحظات حسب المشروع</h3>
+          <div class="chart-wrap"><canvas id="projectChart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>توزيع الملاحظات حسب الفئة</h3>
+          <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="gallerySection">
+      <div class="section-head">
+        <h2>المعرض المصور</h2>
+        <span class="hint">صور موثّقة من محتوى الملف مرتبطة بكل مشروع</span>
+      </div>
+      <div class="gallery-grid" id="galleryGrid"></div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>أبرز التوصيات المقترحة</h2>
+        <span class="hint">مستخلصة من الإجراءات المذكورة في محتوى الملف</span>
+      </div>
+      <div class="rec-list" id="recList"></div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>سجل الملاحظات التفصيلي</h2>
+        <span class="hint">قابل للفرز والتصفية والبحث</span>
+      </div>
+      <div class="filter-bar no-print">
+        <button class="btn btn-primary no-print" id="addIssueBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          إضافة ملاحظة
+        </button>
+        <input type="text" id="searchInput" placeholder="ابحث في الوصف أو المشروع…">
+        <select id="projectFilter"><option value="">كل المشاريع</option></select>
+        <select id="categoryFilter"><option value="">كل الفئات</option></select>
+        <select id="severityFilter">
+          <option value="">كل مستويات الخطورة</option>
+          <option value="عالية">عالية</option>
+          <option value="متوسطة">متوسطة</option>
+          <option value="منخفضة">منخفضة</option>
+        </select>
+        <select id="statusFilter">
+          <option value="">كل الحالات</option>
+          <option value="مفتوحة">مفتوحة</option>
+          <option value="قيد المعالجة">قيد المعالجة</option>
+          <option value="مغلقة">مغلقة</option>
+        </select>
+        <button class="btn btn-ghost no-print" id="exportCsvBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          تصدير CSV
+        </button>
+        <span class="filter-count" id="filterCount">—</span>
+      </div>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>المشروع</th><th>الفئة</th><th>الخطورة</th><th>الحالة</th><th>الملاحظة</th><th>المسؤول / الموعد</th><th>السبب المحتمل</th><th>الإجراء المقترح</th><th class="no-print"></th></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ PANEL: OVERVIEW ============ -->
+  <div class="panel" id="panel-overview">
+    <section>
+      <div class="section-head">
+        <h2>لوحة المتابعة الشاملة لجميع المشاريع</h2>
+        <span class="hint">تجميع تلقائي لكل الملفات المحفوظة في قسم الملاحظات</span>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="kpi">
+          <div class="kpi-label">ملفات محفوظة</div>
+          <div class="kpi-value" id="ovFiles">0</div>
+          <div class="kpi-sub">في قسم الملاحظات</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">إجمالي الملاحظات عبر المشاريع</div>
+          <div class="kpi-value c-teal" id="ovTotal">0</div>
+          <div class="kpi-sub" id="ovTotalSub">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">عدد المشاريع المرصودة</div>
+          <div class="kpi-value c-blue" id="ovProjects">0</div>
+          <div class="kpi-sub">إجمالي منذ بداية التتبع</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">ملاحظات عالية الخطورة</div>
+          <div class="kpi-value c-red" id="ovHigh">0</div>
+          <div class="kpi-sub" id="ovHighSub">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head"><h2>الاتجاه الزمني للملاحظات</h2><span class="hint">تطور عدد الملاحظات وعدد الملاحظات عالية الخطورة عبر الملفات المحفوظة بمرور الوقت</span></div>
+      <div class="card"><div class="chart-wrap" style="height:280px"><canvas id="timelineChart"></canvas></div></div>
+    </section>
+
+    <section>
+      <div class="section-head"><h2>إجمالي الملاحظات حسب المشروع (كل الملفات المحفوظة)</h2></div>
+      <div class="card"><div class="chart-wrap" style="height:340px"><canvas id="overviewChart"></canvas></div></div>
+    </section>
+
+    <section>
+      <div class="section-head"><h2>ترتيب المشاريع حسب الخطورة</h2></div>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="overview-table">
+            <thead><tr><th>#</th><th>المشروع</th><th>إجمالي الملاحظات</th><th>عالية</th><th>متوسطة</th><th>منخفضة</th><th>عدد الملفات المصدر</th><th>آخر تحديث</th></tr></thead>
+            <tbody id="overviewTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ PANEL: NOTES LIBRARY ============ -->
+  <div class="panel" id="panel-notes">
+    <section>
+      <div class="section-head">
+        <h2>قسم الملاحظات المحفوظة</h2>
+        <span class="hint">كل ملف يتم تحليله يُحفظ هنا تلقائيًا ويمكن الرجوع إليه لاحقًا</span>
+      </div>
+      <div id="notesGridWrap"><div class="notes-grid" id="notesGrid"></div></div>
+    </section>
+  </div>
+
+   </div>
+
+<footer class="page-footer">
+  <span>رادار الجودة — لوحة تحليل ملاحظات الجودة في المشاريع</span>
+  <span id="footerDate"></span>
+</footer>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Manual add-issue modal -->
+<div class="modal-overlay" id="issueModalOverlay">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="issueModalTitle">إضافة ملاحظة جديدة</h3><button class="modal-close" id="issueModalClose" type="button">✕</button></div>
+    <div class="modal-body">
+      <label>المشروع</label>
+      <input type="text" id="fProject" list="projectListDatalist" placeholder="مثال: سرايا البحر">
+      <datalist id="projectListDatalist"></datalist>
+      <div class="form-row-2">
+        <div><label>الفئة</label><select id="fCategory"></select></div>
+        <div><label>الخطورة</label>
+          <select id="fSeverity">
+            <option value="عالية">عالية</option>
+            <option value="متوسطة" selected>متوسطة</option>
+            <option value="منخفضة">منخفضة</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div><label>الحالة</label>
+          <select id="fStatus">
+            <option value="مفتوحة" selected>مفتوحة</option>
+            <option value="قيد المعالجة">قيد المعالجة</option>
+            <option value="مغلقة">مغلقة</option>
+          </select>
+        </div>
+        <div><label>الموعد المستهدف</label><input type="date" id="fDueDate"></div>
+      </div>
+      <label>المسؤول</label>
+      <input type="text" id="fAssignee" placeholder="اسم المسؤول عن المتابعة (اختياري)">
+      <label>الملاحظة</label>
+      <textarea id="fDescription" placeholder="وصف الملاحظة…"></textarea>
+      <label>السبب المحتمل (اختياري)</label>
+      <input type="text" id="fCause">
+      <label>الإجراء المقترح (اختياري)</label>
+      <input type="text" id="fAction">
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="issueModalCancel" type="button">إلغاء</button>
+      <button class="btn btn-primary" id="issueModalSave" type="button">حفظ الملاحظة</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share / QR modal -->
+<div class="modal-overlay" id="shareModalOverlay">
+  <div class="modal-box" style="max-width:360px;text-align:center">
+    <div class="modal-head"><h3>مشاركة التحليل</h3><button class="modal-close" id="shareModalClose" type="button">✕</button></div>
+    <div class="modal-body">
+      <div id="qrHolder" style="display:flex;justify-content:center;margin:6px 0 14px"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="shareLinkInput" readonly>
+        <button class="btn btn-primary" id="copyShareLinkBtn" type="button" style="flex:0 0 auto">نسخ</button>
+      </div>
+      <p class="hint" style="margin-top:12px">امسح الرمز من جوال آخر لفتح هذا التحليل مباشرة، أو انسخ الرابط لمشاركته</p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
